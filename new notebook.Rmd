@@ -1,0 +1,202 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    toc: yes
+    toc_float: true
+---
+
+# Title level 1
+## Title level 2
+**bold**
+*italics*
+
+above this line, to create a floating table of contents
+html_document:
+toc:yes
+toc_float: true
+
+# 
+Load packages
+```{r}
+library(tidyverse)
+library(plotly)
+library(dplyr)
+source("functions.R") # This calls all the funcitons you've created in another R file. Allows you to keep your functions together and keep project code clean.
+```
+
+Load the data
+```{r}
+download.file("https://raw.githubusercontent.com/swcarpentry/r-novice-gapminder/gh-pages/_episodes_rmd/data/gapminder-FiveYearData.csv", destfile = "C:\\Users\\Katrina\\Desktop\\data\\gapminder-FiveYearData.csv")
+gapminder <- read.csv("C:\\Users\\Katrina\\Desktop\\data\\gapminder-FiveYearData.csv")
+```
+
+What does the data look like?
+```{r}
+head(gapminder)
+```
+
+What is the life exp per continent?
+```{r}
+p<-ggplot(data=gapminder[gapminder$continent=="Americas",],aes(x=gdpPercap,y=lifeExp,color=continent))+
+  geom_point()+
+  scale_x_log10()+
+  geom_smooth(method="lm")+ # adds a line per continent
+  facet_wrap(~country)
+p
+```
+
+Same plot, interactive
+```{r}
+ggplotly(p)
+```
+
+
+
+# Making your own functions
+
+If you are repeating yourself in your code, you may be able to solve that problem by making your own function!
+
+```{r}
+se<-function(x){ # Have this function sourced from the file in the intro section of this document
+  sd(x)/sqrt(length(x))
+}
+
+cars<-c(3,4,5,6,7,10)
+se(cars)
+
+
+```
+
+
+# Data manipulation with `dplyr`
+
+You will likely want to get subsections of your dataframe and/or calculate means of a variable for a certain subsection, `dplyr` is your friend!
+
+Explore select (for columns)
+select(data.frame,a,c) # a and c are the columns we want
+```{r}
+gapminder <- read.csv("C:\\Users\\Katrina\\Desktop\\data\\gapminder-FiveYearData.csv")
+year_country_gdp<-select(gapminder,year,country,gdpPercap)
+year_country_gdp<-select(gapminder,-pop,-continent,-lifeExp)
+names(year_country_gdp)
+edit(year_country_gdp)
+```
+
+Explore filter (for rows)
+```{r}
+# These two lines of code are equivalent to the ones using pipes below. More computationally expensive because you need to create an intermediary dataset, whereas pipes don't save anything in between
+euro<-filter(gapminder,continent=="Europe")
+year_country_gdp_euro<- select(euro,year,country,gdpPercap)
+
+year_country_gdp_euro<-gapminder %>%
+  filter(continent=="Europe") %>%
+  select(year,country,gdpPercap) # If the dataframe is not the first argument in the function, you can use a period as the first argument then comma, other arguments
+View(year_country_gdp_euro)
+```
+
+Exploring the amazing group by and summarize functions
+
+gapminder%>%group_by
+gapminder%>%group_by%>%summarize(function)
+ctrl + shift + m : %>%
+Alt + - : <-
+```{r}
+mean_gdp_percountry<-gapminder %>% 
+  group_by(country) %>% 
+  summarise(mean_gdp=mean(gdpPercap), se_gdp=se(gdpPercap)) # This summarize argument will create a new column in the dataset using the header=operation within the brackets
+mean_gdp_percountry
+
+mean_se_life_percontinent<-gapminder %>% 
+  group_by(continent) %>% 
+  summarise(mean_life=mean(lifeExp), se_life=se(lifeExp), samsize_life=n(lifeExp)) # This summarize argument will create a new column in the dataset using the header=operation within the brackets. "n" function here works like "length", counts the rows in each group
+mean_se_life_percontinent
+
+mean_se_life_percontinent<-gapminder %>% 
+  group_by(continent,country) %>% 
+  summarise(mean_life=mean(lifeExp), se_life=se(lifeExp), samsize_life=n()) # This summarize argument will create a new column in the dataset using the header=operation within the brackets. "n" function here works like "length", counts the rows in each group, but must remove info within brackets
+mean_se_life_percontinent
+write.csv(mean_se_life_percontinent.csv,"C:\\Users\\Katrina\\Desktop")
+
+```
+
+Combining ggplot in dplyr
+```{r}
+Euro_countries <- gapminder %>% 
+  filter(continent=="Europe") %>% 
+  ggplot(aes(x=year,y=lifeExp,color=country))+
+  geom_line()+
+  facet_wrap(~country)
+Euro_countries
+ggsave("euro.png") #Can save image output type, specify dpi etc
+```
+
+
+
+
+# Data manipulation with `tidyr`
+
+R likes to have 'long' format data where every row is an observation and you have a single column for 'observations' the others serve to identify that observation. (exceptions apply when you have multiple types of observations) To switch back and forth from 'wide' (how we typically enter data in a spreadsheet) to 'long' use `tidyr`
+
+```{r}
+# command to download the 'wide' data
+download.file("https://raw.githubusercontent.com/swcarpentry/r-novice-gapminder/gh-pages/data/gapminder_wide.csv", destfile = "data/gapminder_wide.csv")
+gapminder_wide <- read.csv("C:\\Users\\Katrina\\Desktop\\data\\gapminder_wide.csv")
+edit(gapminder_wide)
+
+gap_long <- gapminder_wide %>% 
+  gather(obstype_year, # key, where we input old col names
+         obs_values, # values, where we input new values
+         starts_with("pop"), # Take cols that start with pop, lifeExp, gdpPercap, and use these as values within our new dataset under obs_values. 
+         starts_with("lifeExp"), 
+         starts_with("gdpPercap"))
+gap_long
+
+gap_long <- gapminder_wide %>% 
+  gather(obstype_year, # key, where we input old col names
+         obs_values, # values, where we input new values
+         3:38) # We can also specify using the column numbers rather than names
+gap_long
+
+```
+
+Separate the obs_type column
+```{r}
+gap_normal <- gap_long %>% 
+  separate(obstype_year,into=c("obs_type","obs_year"),sep="_")
+head(gap_normal)
+
+gap_normal <- gap_long %>% 
+  separate(obstype_year,into=c("obs_type","obs_year"),sep="_") %>% 
+  spread(obs_type,obs_values) # This is the opposite of gather
+head(gap_normal)
+
+all.equal(gapminder,gap_normal) # Compare two datasets. These are the same but in different order
+gap_normal <- gap_normal %>% # Let's rearrange to match the original dataset we worked with
+  arrange(country,continent,year)
+all.equal(gapminder,gap_normal) 
+```
+
+Can use "case when" instead of "ifelse", "if, else", "elseif", etc.
+
+
+#################################################################################
+This is the second section, we are learning the new Desktop GitHub.
+We must write an imperative message for each commit, using the description to explain why this was done.
+Each time we update files, the changes will show up highlighted in GitHub, with additions and subtractions signaled by + and -.
+
+In the GH Desktop, there is a "staging area" which is where you've told Git to keep track of it and you've made changes, but haven't committed yet.
+new change.
+
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
