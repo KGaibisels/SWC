@@ -186,7 +186,8 @@ We must write an imperative message for each commit, using the description to ex
 Each time we update files, the changes will show up highlighted in GitHub, with additions and subtractions signaled by + and -.
 
 In the GH Desktop, there is a "staging area" which is where you've told Git to keep track of it and you've made changes, but haven't committed yet.
-another new change.
+
+There is a section in GitHub where you can scroll through previous commits and see the state of the file at that time. This is useful for comparing changes. You can also discard a change to a document if it's before a commit. Making a quick change.
 
 
 This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
